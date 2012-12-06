@@ -12,11 +12,24 @@
   <ui:connectionAlert>
   <div id="head">
     <div class='pull-right'>
-      {#unless _facebookAuthenticated}
-        <a href="/auth/facebook"><img src='/img/facebook-login-register.jpeg' alt="Login / Register With Facebook"/></a>
+      {#unless _loggedIn}
+        <a class="btn btn-small btn-info" href="#login-modal" data-toggle="modal">Login / Register</a>
+
+        <app:myModal modalId="login-modal" header="Login / Register">
+            <a href="/auth/facebook"><img src='/img/facebook-login-register.jpeg' alt="Login / Register With Facebook"/></a>
+            <h3>Or</h3>
+            <boot:tabs>
+                <boot:tab title="Login">
+                    <derby-auth:login />
+                </boot:tab>
+                <boot:tab title="Register">
+                    <derby-auth:register />
+                </boot:tab>
+            </boot:tabs>
+        </app:myModal>
       {else}
         <div class="btn-group">
-            <button class="btn btn-small">{_user.auth.facebook.name}</button>
+            <button class="btn btn-small">{_loginName}</button>
             <button class="btn btn-small dropdown-toggle" data-toggle="dropdown">
                 <span class="caret"></span>
             </button>
@@ -43,6 +56,13 @@
     </div>
 
     <div class='container-fluid'>
+
+      {#if _flash.error}
+        <ul class="alert alert-error">
+            {#each _flash.error as :error}<li>{:error}</li>{/}
+        </ul>
+      {/}
+
       <div class='row-fluid'>
         <div id=character class='span4'>
           <table>
@@ -236,9 +256,10 @@
           <ul>
             <li>Copyright &copy; 2012 OCDevel LLC</li>
             <li><a target="_blank" href="https://github.com/lefnire/habitrpg#habitrpg">About</a></li>
+            <li><a target="_blank" href="https://github.com/lefnire/habitrpg/wiki/FAQ">FAQ</a></li>
+            <li><a target="_blank" href="https://github.com/lefnire/habitrpg#contact">Contact</a></li>
             <li><a href="/privacy">Privacy</a></li>
             <li><a href="/terms">Terms</a></li>
-            <li><a target="_blank" href="http://ocdevel.com/contact">Contact</a></li>
           </ul>
         </div>
     </div>
@@ -268,7 +289,7 @@
 <taskColumn: nonvoid>
   <div class="span3 well {{{type}}}s">
     <!--removing for now, help-info in the tour instead-->
-    <!--<span class="help-icon" rel="popover" data-placement="bottom" data-original-title="{{{helpTitle}}}" data-content="{{{helpContent}}}"><i class="icon-question-sign"></i></span>-->
+    <!--<span class="help-icon" rel="popover" data-placement="bottom" data-trigger="hover" data-original-title="{{{helpTitle}}}" data-content="{{{helpContent}}}"><i class="icon-question-sign"></i></span>-->
     <h1>{{{title}}}</h1>
     {{{content}}}
   </div>
@@ -288,7 +309,7 @@
         <a x-bind=click:toggleTaskEdit data-hide-id="{{:task.id}}-chart" data-toggle-id="{{:task.id}}-edit" rel=tooltip title="Edit"><i class="icon-pencil"></i></a>
         <a x-bind=click:del rel=tooltip title="Delete"><i class="icon-trash"></i></a>
         {#if :task.history}
-          <a x-bind=click:toggleChart data-toggle-id="{{:task.id}}-chart" data-hide-id="{{:task.id}}-edit" data-history-path="_user.tasks.{{:task.id}}.history" rel=tooltip title="Progress">
+          <a x-bind=click:toggleChart data-toggle-id="{{:task.id}}-chart" data-hide-id="{{:task.id}}-edit" data-history-path="_user.tasks.{{:task.id}}.history" rel="tooltip" title="Progress">
             <i class="icon-signal"></i>
           </a>
         {/}
@@ -296,9 +317,9 @@
       
       {#if :task.notes}
         {#if equal(:task.type,'reward')}
-          <span rel="popover" data-placement="left" data-content="{:task.notes}" data-original-title="{:task.text}" class='task-notes'><i class="icon-comment"></i></span>
+          <span rel="popover" data-trigger="hover" data-placement="left" data-content="{:task.notes}" data-original-title="{:task.text}" class='task-notes'><i class="icon-comment"></i></span>
         {else}
-          <span rel="popover" data-content="{:task.notes}" data-original-title="{:task.text}" class='task-notes'><i class="icon-comment"></i></span>
+          <span rel="popover" data-trigger="hover" data-content="{:task.notes}" data-original-title="{:task.text}" class='task-notes'><i class="icon-comment"></i></span>
         {/}  
       {/}
     </div>
@@ -368,7 +389,7 @@
   <li class="task reward item">
     <pre>
       <div class="task-meta-controls">
-        <span rel="popover" data-placement="left" data-content="{:item.notes}" data-original-title="{:item.text}" class='task-notes'><i class="icon-comment"></i></span>
+        <span rel="popover" data-trigger="hover" data-placement="left" data-content="{:item.notes}" data-original-title="{:item.text}" class='task-notes'><i class="icon-comment"></i></span>
       </div>
       <div class="task-controls">
         {{{#if reroll}}}
@@ -380,44 +401,3 @@
       <div class="task-text"><img src="/img/BrowserQuest/habitrpg_mods/{:item.icon}.png" /> {:item.text}</div>
     </pre>
   </li>
-  
-<!-- Required scripts, needed by ready() -->
-<Scripts:>
-  <script src=/js/jquery.min.js></script>
-  {#unless _mobileDevice}<script src=/js/jquery-ui.min.js></script>{/}
-  <script src=/js/bootstrap.min.js></script><!-- http://twitter.github.com/bootstrap/assets/js/bootstrap.min.js -->
-  <script src=/js/jquery.cookie.js></script><!-- https://raw.github.com/carhartl/jquery-cookie/master/jquery.cookie.js -->
-  <script src=/js/bootstrap-tour.js></script><!-- https://raw.github.com/pushly/bootstrap-tour/master/bootstrap-tour.js -->
-  <script src=/js/jquery.bootstrap-growl.min.js></script>
-  
-<!-- Scripts not needed right away (google charts) or entirely optional (analytics) -->
-<Tail:>
-  {#unless _mobileDevice}
-  <!-- Google Charts -->
-  <script src=/js/google-jsapi.js></script><!-- https://www.google.com/jsapi -->
-  <script type="text/javascript">
-    google.load("visualization", "1", {packages:["corechart"]});
-    google.setOnLoadCallback(function(){});
-  </script>
-  
-  <!-- Addthis -->
-  <script type="text/javascript" src="https://s7.addthis.com/js/250/addthis_widget.js#pubid=lefnire"></script>
-  
-  <!-- Twitter -->
-  <!--<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>-->
-  {/}
-  
-  {#if equal(_nodeEnv,'production')}
-  <!-- Google Analytics -->
-  <script type="text/javascript">
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-33510635-1']);
-    _gaq.push(['_trackPageview']);
-  
-    (function() {
-      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-    })();
-  </script>
-  {/}

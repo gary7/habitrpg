@@ -2,6 +2,7 @@ derby = require 'derby'
 {get, view, ready} = derby.createApp module
 derby.use require 'derby-ui-boot'
 derby.use require('../../ui')
+derby.use require('derby-auth/components');
 
 # Custom requires
 moment = require('moment')
@@ -16,18 +17,21 @@ _ = require 'underscore'
 # ========== ROUTES ==========
 
 get '/:uid?', (page, model, {uid}, next) ->
-  # delegate to other routes. FIXME how to define express routes first?
-  if uid && !(require('guid').isGuid(uid))
-    return next() 
-    
+
+  # Legacy - won't be allowing PURL auth in the future. Remove once password auth in place
+  # Creates stink here too because :uid accounts for every single-param path (terms, privacy, etc)
+  if uid
+    if require('guid').isGuid(uid)
+      return page.redirect('/users/'+uid)
+    else
+      return next()
+
   # Force SSL
   req = page._res.req
   if req.headers['x-forwarded-proto']!='https' and process.env.NODE_ENV=='production'
     return page.redirect 'https://' + req.headers.host + req.url
 
   sess = model.session
-  if sess.habitRpgAuth && sess.habitRpgAuth.facebook
-    model.set('_facebookAuthenticated', true)
   model.set '_userId', sess.userId
   model.subscribe "users.#{sess.userId}", (err, user) ->
     # Set variables which are passed from the controller to the view
@@ -35,6 +39,11 @@ get '/:uid?', (page, model, {uid}, next) ->
 
     #FIXME remove this eventually, part of user schema
     user.setNull 'balance', 2
+    # support legacy Everyauth schema (now using derby-auth, Passport)
+    if fb = user.get('auth.facebook')
+      model.set('_loginName', if fb._raw then "#{fb.name.givenName} #{fb.name.familyName}" else fb.name)
+    else if username = user.get('auth.local.username')
+      model.set('_loginName', username)
     
     # Setup Item Store
     model.set '_items'
@@ -52,8 +61,11 @@ get '/:uid?', (page, model, {uid}, next) ->
 
     # FIXME temporary hack to remove duplicates. Need to figure out why they're being produced
     _.each ['habitIds','dailyIds','todoIds','rewardIds'], (path) ->
-      user.set path, _.uniq(user.get(path), true)
-    
+      orig = user.get(path)
+      unique = _.uniq(orig, true)
+      if orig.length != unique.length
+        user.set path, unique
+
     # Setup Model Functions
     model.fn '_user._tnl', '_user.stats.lvl', (lvl) ->
       # see https://github.com/lefnire/habitrpg/issues/4
@@ -66,6 +78,8 @@ get '/:uid?', (page, model, {uid}, next) ->
 # ========== CONTROLLER FUNCTIONS ==========
 
 ready (model) ->
+  require('./loadJavascripts')(model)
+
   # Setup model in scoring functions
   scoring.setModel(model)
   
@@ -278,5 +292,7 @@ ready (model) ->
   
   # FIXME seems can't call scoring.cron() instantly, have to call after some time (2s here)
   # Doesn't do anything otherwise. Don't know why... model not initialized enough yet?   
-  setTimeout scoring.cron, 1 # Run once on refresh
+  setTimeout scoring.cron, 1000 # Run once on refresh
   setInterval scoring.cron, 3600000 # Then run once every hour
+
+  require('../server/private').app(exports, model)

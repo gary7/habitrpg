@@ -46,7 +46,7 @@ module.exports = (expressApp, root, derby) ->
         model.at('_habitList').push {
           id: taskId
           type: 'habit'
-          text: (title || taskId) + ' *'
+          text: (title || taskId)
           value: 0
           up: true
           down: true
@@ -58,13 +58,3 @@ module.exports = (expressApp, root, derby) ->
       result = model.get ('_user.stats')
       result.delta = delta
       res.send(result)
-
-  # ---------- Stripe ------------
-
-  expressApp.post '/', (req) ->
-    require('../app/reroll').stripeResponse(req)
-
-  # ---------- Errors ------------
-
-  expressApp.all '*', (req) ->
-    throw "404: #{req.url}"
